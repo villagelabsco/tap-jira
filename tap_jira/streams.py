@@ -270,14 +270,13 @@ class Users(Stream):
     def sync(self):
         max_results = 2
 
-        if Context.config.get("groups"):
-            groups = Context.config.get("groups").split(",")
-        else:
-            groups = ["jira-administrators",
-                      "jira-software-users",
-                      "jira-core-users",
-                      "jira-users",
-                      "users"]
+        # Fetch the groups dynamically
+        groups = []
+        pager = Paginator(Context.client, items_key='values')
+        for page in pager.pages(self.tap_stream_id, "GET",
+                                        "/rest/api/2/group/bulk"):
+            for grp in page:
+                groups.append(grp["name"])
 
         for group in groups:
             group = group.strip()
@@ -395,6 +394,7 @@ PROJECTS = Projects("projects", ["id"])
 CHANGELOGS = Stream("changelogs", ["id"], indirect_stream=True)
 
 ALL_STREAMS = [
+    Stream("fields", ["id"], path="/rest/api/3/field"),
     PROJECTS,
     VERSIONS,
     COMPONENTS,
