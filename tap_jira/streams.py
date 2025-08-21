@@ -9,7 +9,7 @@ from singer import metrics, utils, metadata, Transformer
 from singer.transform import SchemaMismatch
 from dateutil.parser._parser import ParserError
 from requests.exceptions import RequestException
-from .http import Paginator, JiraNotFoundError
+from .http import Paginator, CursorPaginator, JiraNotFoundError
 from .context import Context
 
 DEFAULT_PAGE_SIZE = 50
@@ -625,7 +625,7 @@ class Roles(Stream):
 class Issues(Stream):
     def sync(self):
         updated_bookmark = [self.tap_stream_id, "updated"]
-        page_num_offset = [self.tap_stream_id, "offset", "page_num"]
+        cursor_bookmark = [self.tap_stream_id, "cursor", "next_page_token"]
 
         last_updated = Context.update_start_date_bookmark(updated_bookmark)
         timezone = Context.retrieve_timezone()
@@ -640,8 +640,15 @@ class Issues(Stream):
             "expand": "changelog,transitions",
             "maxResults": DEFAULT_PAGE_SIZE,
         }
-        page_num = Context.bookmark(page_num_offset) or 0
-        pager = Paginator(Context.client, items_key="issues", page_num=page_num)
+
+        # Use CursorPaginator for v3/search/jql endpoint
+        pager = CursorPaginator(Context.client, items_key="issues")
+
+        # Restore cursor state if available
+        saved_cursor = Context.bookmark(cursor_bookmark) or None
+        if saved_cursor:
+            pager.next_page_token = saved_cursor
+
         for page in pager.pages(
             self.tap_stream_id, "GET", "/rest/api/3/search/jql", params=params
         ):
@@ -664,9 +671,12 @@ class Issues(Stream):
 
             self.write_page(page)
 
-            Context.set_bookmark(page_num_offset, pager.next_page_num)
+            # Save cursor state for resumption
+            Context.set_bookmark(cursor_bookmark, pager.next_page_token)
             singer.write_state(Context.state)
-        Context.set_bookmark(page_num_offset, None)
+
+        # Clear cursor bookmark when sync is complete
+        Context.set_bookmark(cursor_bookmark, None)
         Context.set_bookmark(updated_bookmark, last_updated)
         singer.write_state(Context.state)
 
