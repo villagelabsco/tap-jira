@@ -690,7 +690,7 @@ ALL_STREAMS = [
     VERSIONS,
     COMPONENTS,
     ProjectTypes("project_types", ["key"]),
-    # Stream("project_categories", ["id"], path="/rest/api/2/projectCategory"),
+    Stream("project_categories", ["id"], path="/rest/api/2/projectCategory"),
     Stream("resolutions", ["id"], path="/rest/api/2/resolution"),
     Roles("roles", ["id"]),
     Users("users", ["accountId"]),
