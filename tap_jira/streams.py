@@ -9,7 +9,7 @@ from singer import metrics, utils, metadata, Transformer
 from singer.transform import SchemaMismatch
 from dateutil.parser._parser import ParserError
 from requests.exceptions import RequestException
-from .http import Paginator, CursorPaginator, JiraNotFoundError
+from .http import Paginator, CursorPaginator, JiraNotFoundError, JiraUnauthorizedError
 from .context import Context
 from tap_jira.jira_utils.flatten_description import flatten_description
 
@@ -320,6 +320,12 @@ class Users(Stream):
                                         "/rest/api/2/group/member",
                                         params=params):
                     self.write_page(page)
+                    LOGGER.info("Successfully fetched members for groupname: \"%s\"", group)
+            except JiraUnauthorizedError:
+                # The customer integration may involve a scoped API token, in which case we may or may not get access rights to 
+                # certain group members. 
+                # More details here: https://developer.atlassian.com/cloud/jira/platform/rest/v2/api-group-groups/#api-rest-api-2-group-member-get
+                LOGGER.info("The token is not authorized to get data about groupname: \"%s\", skipping", group)
             except JiraNotFoundError:
                 LOGGER.info("Could not find group \"%s\", skipping", group)
 
