@@ -600,6 +600,9 @@ class Issues(Stream):
         for page in pager.pages(
             self.tap_stream_id, "GET", "/rest/api/3/search/jql", params=params
         ):
+            if not page:
+                LOGGER.warning("Received empty page from issues search, skipping")
+                continue
             # sync comments and changelogs for each issue
             sync_sub_streams(page)
             for issue in page:
