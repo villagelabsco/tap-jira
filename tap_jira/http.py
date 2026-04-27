@@ -291,9 +291,7 @@ class Client():
             self.login_timer.start()
 
     def test_credentials_are_authorized(self):
-        # Assume that everyone has issues, so we try and hit that endpoint
-        self.request("issues", "GET", "/rest/api/2/search",
-                     params={"maxResults": 1})
+        self.request("issues", "GET", "/rest/api/3/myself")
 
     def test_basic_credentials_are_authorized(self):
         # Make a call to myself endpoint for verify creds
